@@ -1,5 +1,5 @@
 # Algebraic Cryptography Projects
-Collection of projects for Algebraic Cryptography exam at University of Trento - Language: English. <br><br>
+Collection of projects for Algebraic Cryptography exam at University of Trento - Language: English. <br>
 Titles of main projects: 
 - <em>Implementation of Kasumi</em>
 - <em>Implementation of Coppersmith's Index Calculus</em>
