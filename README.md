@@ -1,10 +1,9 @@
 # Algebraic Cryptography Projects
 Collection of projects for Algebraic Cryptography exam at University of Trento - Language: English. <br><br>
 
-Titles: 
-- <em>Analysis of admissible strings</em>
-- <em>Simulation of SPET on DNA sequences</em>
-- <em>Implementation of multigrid methods</em>
+Titles of main projects: 
+- <em>Implementation of Kasumi</em>
+- <em>Implementation of Coppersmith's Index Calculus</em>
 
 In each folder the source code in Magma can be found, along with a corresponding report. 
 
