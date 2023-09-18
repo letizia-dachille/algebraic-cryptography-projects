@@ -1,0 +1,177 @@
+//ex 1
+
+function Lenstra(n)
+	A := Random(n - 1); 
+	a := Random(n - 1); 
+	b := Random(n - 1); 
+	B := b^2 - a^3 - A*a mod n;
+	//We see all points as point in the projective space
+	EC := ProjectiveSpace(Integers(n),2);
+	P := EC![a,b];
+	//Fix bound
+	bound := 100;
+	for j in [2..bound] do
+		//Compute Q := jP using square and multiply
+		//At the end of iteration we will assign P := Q so that 
+		//we actually have P := j!*(initial point)
+		//Compute binary representation of j
+		jseq := Intseq(j, 2);
+		Q := EC![0,0,1];
+		//Since Magma uses little endian format, the values are already in
+		//the correct order for square and multiply
+		for i in [1..#jseq] do
+			//Compute 2Q
+			//If Q = O, also 2Q = O, we don't have to do anything
+			if Q ne EC![0,0,1] then
+				if Q[2] eq 0 then
+					//If y=0 then 2Q = O
+					Q := EC![0,0,1];
+				else
+					//Check the gcd to find a factor
+					gcd := GCD(Integers()!Q[2],n);
+					if (gcd gt 1) then
+						if (gcd eq n) then
+							return "failure";
+						else
+							return gcd;
+						end if;
+					end if; 
+					//If gcd is 1, we can compute 2Q
+					lam := (3*Q[1]^2 + a) / 2*Q[2];
+					x := lam^2-2*Q[1];
+					y := -lam*x - Q[2] - lam*Q[1];
+					Q := EC![x, y];
+				end if;
+			end if;
+			if(jseq[i] eq 1) then
+				//Compute Q + P
+				if Q ne EC![0,0,1] and P ne EC![0,0,1] then
+					if Q[1] eq P[1] and Q[2] eq -P[2] then
+						//If x1=x2 and y1=-y2, then Q + P = O
+						Q := EC![0,0,1];
+					else
+						//Check the gcd to find a factor
+						gcd := GCD(Integers()!(P[1] - Q[1]),n);
+						if (gcd gt 1) then
+							if (gcd eq n) then
+								return "failure";
+							else
+								return gcd;
+							end if;
+						end if; 
+						//If gcd is 1, we can compute P + Q
+						lam := (P[2] - Q[2]) / (P[1] - Q[1]);
+						x := lam^2-P[1]-Q[1];
+						y := -lam*x - P[2] - lam*P[1];
+						Q := EC![x, y];
+					end if;
+				else
+					//If Q = O, then P+Q = P
+					//If P = O, then P+Q = Q, we don't have to do anything
+					if Q eq EC![0,0,1] then
+						Q := P;
+					end if;
+				end if;
+			end if;
+		end for;
+		P := Q;
+	end for;
+	//If max number of iterations exceeds the bound, the algorithm 
+	//fails
+	return "failure";
+end function;
+
+//__________________________________________________
+
+//ex 2
+
+function PollardRhoEC(p, A, B, P, Q, ord)
+	F := FiniteField(p);
+	EC := EllipticCurve ([F|A,B]);
+	//Fix partition of G, we will use
+	//P \in Si iff x_P \cong i mod s + 1
+	//We use s = 20 as suggested in the article
+	s := 20;
+	//Generate points M
+	ab := [[Random(ord - 1), Random(ord - 1)] : i in [1..s]];
+	M := [ab[i][1] * P + ab[i][2] * Q: i in [1..s]];
+	//Define map f
+	f := map< car<EC, Integers(), Integers()> -> car<EC, Integers(), Integers()> | el :-> <el[1] + M[i], el[2] + ab[i][1] mod ord, el[3] + ab[i][2] mod ord> where i is Integers()!el[1][1] mod s + 1>;
+	//Starting elements
+	a := Random(ord - 1);
+	b := Random(ord - 1);
+	el1 := <a * P + b * Q, a, b>;
+	el2 := el1;
+	//Counter for the number of iterations
+	c := 0;
+	while c le 10000 do
+		//Compute elements P_i, P_2i starting from P_(i-1), P_(2*(i-1))
+		el1 := f(el1);
+		el2 := f(f(el2));
+		if el1[1] eq el2[1] then
+			//Compute elements u_i - u_2i, v_2i - v_i and gcd
+			utemp := Integers()!el1[2] - Integers()!el2[2];
+			vtemp := Integers()!el2[3] - Integers()!el1[3];
+			gcd := GCD(vtemp, ord);
+			if gcd eq 1 then
+				//When v_2i - v_i is invertible, we do the direct 
+				//computation
+				return utemp * Modinv(vtemp, ord) mod ord;
+			else 
+				//Else, if gcd is not big, we try all solutions of
+				//c(b2i - bi) = ai - a2i mod (p-1)
+				if gcd lt 1000 then
+					//Compute sol such that sol*(v2i - vi) = gcd mod ord
+					sol := Solution(Integers(ord)!vtemp, Integers(ord)!gcd);
+					for k in [0 .. gcd-1] do
+						//Compute all possible solutions 
+						//c = sol*(ui - u2i)/gcd + k*ord/gcd
+						//and try if they are the solution
+						temp := Integers()!(sol * Integers(ord)!(utemp / gcd) + k * Integers(ord)!(ord / gcd));
+						if k * P eq Q then
+							return temp;
+						end if;
+					end for;
+				end if;
+			end if;
+		end if;
+		c := c + 1;
+	end while;
+	return "failure";
+end function;
+
+//__________________________________________________
+
+/*VERIFICATION
+
+n := 187;
+Lenstra(n);
+n := 6887;
+Lenstra(n);
+n := 589;
+Lenstra(n);
+n := 26167;
+Lenstra(n);
+
+p := 1093;
+F := FiniteField(p);
+A := 1;
+B := 1;
+EC := EllipticCurve ([F|A,B]);
+P1 := EC![0,1];
+Q1 := EC![413,959];
+ord := 1067;
+k1 := PollardRhoEC(p, A, B, P1, Q1, ord);
+k1;
+
+p := 229;
+F := FiniteField(p);
+A := 1;
+B := 44;
+EC := EllipticCurve ([F|A,B]);
+P2 := EC![5,116];
+Q2 := EC![155,166];
+ord := 239;
+k2 := PollardRhoEC(p, A, B, P2, Q2, ord);
+k2;
+*/

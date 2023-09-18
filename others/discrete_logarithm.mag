@@ -1,0 +1,163 @@
+//ex 1
+
+function PollardRho(g,a,p)
+	g := GF(p)!g;
+	a := GF(p)!a;
+	//Fix partition of GF(p)
+	/* Other possibility for sets
+	S1 := {GF(p)!x : x in [0..p-1] | x mod 3 eq 1};
+	S2 := {GF(p)!x : x in [0..p-1] | x mod 3 eq 0};
+	S3 := {GF(p)!x : x in [0..p-1] | x mod 3 eq 2}; */
+	S1 := {GF(p)!x : x in [2*Ceiling(p div 3)..p-1]};
+	S2 := {GF(p)!x : x in [Ceiling(p div 3)..2*Ceiling(p div 3)-1]};
+	S3 := {GF(p)!x : x in [0..Ceiling(p div 3)-1]};
+	//Define map f using select
+	f := map< car<GF(p), Integers(), Integers()> -> car<GF(p), Integers(), Integers()> | el :-> 
+		el[1] in S1 select <a*el[1], el[2] mod (p-1), (el[3] + 1) mod (p-1)> 
+		else el[1] in S2 select <el[1]^2, (2*el[2]) mod (p-1), (2*el[3]) mod (p-1)> 
+		else <g*el[1], (el[2] + 1) mod (p-1), el[3] mod (p-1)> >;
+	//Starting elements
+	el1 := <GF(p)!1,0,0>;
+	el2 := <GF(p)!1,0,0>;
+	while true do
+		//Compute elements x_i, x_2i starting from x_(i-1), x_(2*(i-1))
+		el1 := f(el1);
+		el2 := f(f(el2));
+		if el1[1] eq el2[1] then
+			//Compute elements a_i - a_2i, b_2i - b_i and gcd
+			atemp := Integers()!el1[2] - Integers()!el2[2];
+			btemp := Integers()!el2[3] - Integers()!el1[3];
+			gcd := GCD(btemp, p-1);
+			if gcd eq 1 then
+				//When b_2i - b_i is invertible, we do the direct 
+				//computation
+				return atemp * Modinv(btemp, p-1) mod (p-1);
+			else 
+				//Else, if gcd is not big, we try all solutions of
+				//c(b2i - bi) = ai - a2i mod (p-1)
+				if gcd lt 1000 then
+					//Compute s such that s*(b2i - bi) = gcd mod (p-1)
+					s := Solution(Integers(p-1)!btemp, Integers(p-1)!gcd);
+					for k in [0 .. gcd-1] do
+						//Compute all possible solutions 
+						//c = s*(ai - a2i)/gcd + k*(p-1)/gcd
+						//and try if they are the dlog
+						temp := Integers()!(s * Integers(p-1)!(atemp / gcd) + k * Integers(p-1)!((p-1) / gcd));
+						if g ^ temp eq a then
+							return temp;
+						end if;
+					end for;
+				end if;
+			end if;
+		end if;
+	end while;
+end function;
+
+//__________________________________________________
+
+//ex 2
+
+function Shanks(g,a,p)
+	g := GF(p)!g;
+	a := GF(p)!a;
+	m := Ceiling(Sqrt(p-1));
+	//Compute first parallel lists
+	L1 := [[0],[1]];
+	//Precompute g^m
+	temp := g^m;
+	for j in [2..m] do
+		Append(~(L1[1]),j-1);
+		//Compute g^(jm) = g^((j-1)m) * g^m
+		Append(~(L1[2]),L1[2][j-1] * temp);
+	end for;		
+	//Sort the two parallel lists with respect to the second
+	ParallelSort(~(L1[2]),~(L1[1]));
+	//Compute second parallel lists
+	L2 := [[0],[a]];
+	//Precompute g^(-1)
+	temp := g^(-1);
+	for j in [2..m] do
+		Append(~(L2[1]),j-1);
+		//Compute a*g^(-j) = (a*g^(-(j-1))) * g^(-1)
+		Append(~(L2[2]),L2[2][j-1] * temp);
+	end for;		
+	//Sort the two parallel lists with respect to the second
+	ParallelSort(~(L2[2]),~(L2[1]));
+	//Compare the two lists scanning them only one time since they are ordered
+	i := 1;
+	j := 1;
+	while i le m and j le m do
+		if L1[2][i] eq L2[2][j] then
+			//If we find a collision we immediately return the dlog
+			return (m * L1[1][i] + L2[1][j]);
+		else 
+			//Else, we increment the indeces depending on which of the two elements was
+			//greater than the other
+			if L1[2][i] gt L2[2][j] then
+				j := j + 1;
+			else
+				i := i + 1;
+			end if;
+		end if;
+	end while;
+	return 0;
+end function;
+
+//__________________________________________________
+
+/*VERIFICATION
+
+p := 809;
+g := GF(p)!3;
+a := GF(p)!525;
+e := PollardRho(g,a,p);
+g ^ Integers()!e eq a;
+e := Shanks(g,a,p);
+g ^ Integers()!e eq a;
+e;
+
+p := 24691;
+g := GF(p)!106;
+a := GF(p)!12375;
+e := PollardRho(g,a,p);
+g ^ Integers()!e eq a;
+e := Shanks(g,a,p);
+g ^ Integers()!e eq a;
+e;
+
+p := 458009;
+g := GF(p)!6;
+a := GF(p)!248388;
+e := PollardRho(g,a,p);
+g ^ Integers()!e eq a;
+e := Shanks(g,a,p);
+g ^ Integers()!e eq a;
+e;
+
+p := 48611;
+g := GF(p)!19;
+a := GF(p)!24717;
+e := PollardRho(g,a,p);
+g ^ Integers()!e eq a;
+e := Shanks(g,a,p);
+g ^ Integers()!e eq a;
+e;
+
+p := 81799;
+g := GF(p)!11;
+a := GF(p)!41387;
+e := PollardRho(g,a,p);
+g ^ Integers()!e eq a;
+e := Shanks(g,a,p);
+g ^ Integers()!e eq a;
+e;
+
+p := 15239131;
+g := GF(p)!29;
+a := GF(p)!5953042;
+e := PollardRho(g,a,p);
+g ^ Integers()!e eq a;
+e := Shanks(g,a,p);
+g ^ Integers()!e eq a;
+e;
+*/

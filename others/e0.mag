@@ -1,0 +1,41 @@
+function E0_Keystream(S,t)
+	//Feedback polynomials
+	P<x> := PolynomialRing(GF(2));
+	f1 := x^25 + x^20 + x^12 + x^8 + 1;
+	f2 := x^31 + x^24 + x^16 + x^12 + 1;
+	f3 := x^33 + x^28 + x^24 + x^4 + 1;
+	f4 := x^39 + x^36 + x^28 + x^4 + 1;
+	//Initialization of registers: conversion of hexadecimal 
+	//values in integers, and then in binary values with a 
+	//fixed length of 132; then splitting in the various
+	//registers
+	Init := Reverse(Intseq(StringToInteger(S,16),2,132));
+	LFSR1 := [GF(2)!Init[i]:i in [1..25]];
+	LFSR2 := [GF(2)!Init[i]:i in [26..56]];
+	LFSR3 := [GF(2)!Init[i]:i in [57..89]];
+	LFSR4 := [GF(2)!Init[i]:i in [90..128]];
+	R := [GF(2)!Init[i]:i in [129..132]];
+	Ks := [];
+	for i in [1..t] do
+		//Take outputs of LFSR registers, and update
+		s1 := LFSR1[2];
+		LFSR1 := LFSRStep(f1,LFSR1);
+		s2 := LFSR2[8];
+		LFSR2 := LFSRStep(f2,LFSR2);
+		s3 := LFSR3[2];
+		LFSR3 := LFSRStep(f3,LFSR3);
+		s4 := LFSR4[8];
+		LFSR4 := LFSRStep(f4,LFSR4);
+		//Take output of nonlinear register
+		s5 := R[2];
+		//Compute z as binary value of 2 bits, paying 
+		//attention to the fact that the operations are in Z
+		z := Intseq(Floor((Integers()!s1+Integers()!s2+Integers()!s3+Integers()!s4+2*Integers()!(R[1])+Integers()!R[2])/2),2,2);
+		//Update of the register paying attention to the fact
+		//that the operations are in GF(2)
+		R := [GF(2)!z[2] + R[1] + R[4], GF(2)!z[1] + R[2]+ R[3] +R[4], R[1], R[2]];
+		//Next bit of the keystream
+		Append(~Ks,s1+s2+s3+s4+s5);
+	end for;
+	return Ks;
+end function;

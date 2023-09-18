@@ -1,0 +1,125 @@
+//___________________Global parameters______________________
+
+t := 10;
+b := 160;
+tableIntegerToHexadecimal:=["0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"];
+
+//___________________Global functions_______________________
+
+function HexToBin(s)
+	return [b : b in Reverse(Intseq(StringToInteger(s[i],16),2,4)), i in [1..#s]];
+end function;
+
+function BinToHex(bin)
+	D:=Partition(bin,4);
+	return &cat[tableIntegerToHexadecimal[Seqint(Reverse([i : i in d]),2)+1] : d in D];
+end function;
+
+//__________________________________________________
+
+//ex 1
+
+function RingSign(m, P, S_s, s)
+	//Compute random v', x_i 
+	//We compute also x_s although it will not be used and will be 
+	//overwritten
+	v_prime := Seqint([Random({0,1}) : j in [1..b]],2);
+	x := [Seqint([Random({0,1}) : j in [1..b]], 2): i in [1..t]];
+	//Define maps g_i using select to manage cases
+	//We compute also g_s although it will not be used
+	g := [map<Integers() -> Integers() | x :-> ((a + 1) * P[i][1] le 2^b) select (a * P[i][1] + Modexp(r,P[i][2],P[i][1])) else x where a is x div P[i][1] where r is x mod P[i][1]> : i in [1..t]];
+	//Define map H'
+	Hash_prime := map<Integers() -> Integers() | x :-> Seqint(HexToBin(SHA1(BinToHex(Intseq(x,2,b)) cat SHA1(m))),2)>;
+	//Compute y_i = g_i(x_i)
+	//We compute also y_s although it will not be used and will be 
+	//overwritten
+	y := [g[i](x[i]): i in [1..t]];
+	//Compute v = H'(y_t + H'( ... + H'(y_{s+1}+ H'(v')) ... ))
+	v := Hash_prime(v_prime);
+	for i in [s+1..t] do
+		v := Hash_prime(BitwiseXor(y[i],v));
+	end for; 
+	//Compute h = H'(y_{s-1} + H'( ... + H'(y_1 + v) ... ))
+	h := v;
+	for i in [1..s-1] do
+		h := Hash_prime(BitwiseXor(y[i],h));
+	end for;
+	//Compute y_s = v' + h (solves equation C_{v}(y_1,...,y_t) = v )
+	y[s] := BitwiseXor(v_prime,h);
+	//Compute x_s = g_s^{-1}(y_s) using select
+	//Note that the inverse has the same form of g_s except for the 
+	//RSA encryption that is substituted by RSA decryption
+	x[s] := ((a + 1) * P[s][1] le 2^b) select (a * P[s][1] + Modexp(r,S_s,P[s][1])) else y[s] where a is y[s] div P[s][1] where r is y[s] mod P[s][1];
+	//Return signature
+	return [* P, v, x *];
+end function;
+
+//__________________________________________________
+
+//ex 2
+
+function RingVerify(m, sigma)
+	P := sigma[1];
+	v := sigma[2];
+	x := sigma[3];
+	//Define maps g_i using select to manage cases
+	g := [map<Integers() -> Integers() | x :-> ((a + 1) * P[i][1] le 2^b) select (a * P[i][1] + Modexp(r,P[i][2],P[i][1])) else x where a is x div P[i][1] where r is x mod P[i][1]> : i in [1..t]];
+	//Define map H'
+	Hash_prime := map<Integers() -> Integers() | x :-> Seqint(HexToBin(SHA1(BinToHex(Intseq(x,2,b)) cat SHA1(m))),2)>;
+	//Compute y_i = g_i(x_i)
+	y := [g[i](x[i]): i in [1..t]];
+	//Compute h = C_{v}(y_1,...,y_t) =
+	//			= H'(y_t + H'( ... + H'(y_1 + v) ... ))
+	h := v;
+	for i in [1..t] do
+		h := Hash_prime(BitwiseXor(y[i],h));
+	end for; 
+	//Verify the equation C_{v}(y_1,...,y_t) = v
+	if v eq h then
+		return true;
+	else
+		return false;
+	end if;
+end function;
+
+//__________________________________________________
+
+/*VERIFICATION
+
+P := [
+	[ 143, 7 ],
+	[ 143, 7 ],
+	[ 143, 7 ],
+	[ 143, 7 ],
+	[ 143, 7 ],
+	[ 143, 7 ],
+	[ 143, 7 ],
+	[ 143, 7 ],
+	[ 143, 7 ],
+	[ 143, 7 ]
+];
+S_s := 103;
+s := 4;
+m := "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f";
+sigma := RingSign(m, P, S_s, s);
+RingVerify(m, sigma);
+
+P := [
+	[ 533249799211, 180359079845 ],
+	[ 132599572733, 124761512435 ],
+	[ 27477991181, 9626273419 ],
+	[ 95035791659, 46701967087 ],
+	[ 149837394691, 104518267375 ],
+	[ 16914598367, 15083409479 ],
+	[ 25879663781, 16456512923 ],
+	[ 131017440187, 65275143213 ],
+	[ 93649447979, 52450896329 ],
+	[ 381743675413, 94316278031 ]
+];
+S_s := 165508602299;
+s := 10;
+m := "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f";
+sigma := RingSign(m, P, S_s, s);
+RingVerify(m, sigma);
+
+*/

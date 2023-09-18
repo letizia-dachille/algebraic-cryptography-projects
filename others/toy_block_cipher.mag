@@ -1,0 +1,161 @@
+//ex 1
+
+function Substitution(m)
+    //Make the substitution traslating each hexadecimal element
+    //in the corresponding binary notation (4 bits)
+    case m:
+        when [0, 0, 0, 0]:
+            return [1, 1, 1, 0];
+        when [0, 0, 0, 1]:
+            return [0, 1, 0, 0];
+        when [0, 0, 1, 0]:
+            return [1, 1, 0, 1];
+        when [0, 0, 1, 1]:
+            return [0, 0, 0, 1];
+        when [0, 1, 0, 0]:
+            return [0, 0, 1, 0];
+        when [0, 1, 0, 1]:
+            return [1, 1, 1, 1];
+        when [0, 1, 1, 0]:
+            return [1, 0, 1, 1];
+        when [0, 1, 1, 1]:
+            return [1, 0, 0, 0];
+        when [1, 0, 0, 0]:
+            return [0, 0, 1, 1];
+        when [1, 0, 0, 1]:
+            return [1, 0, 1, 0];
+        when [1, 0, 1, 0]:
+            return [0, 1, 1, 0];
+        when [1, 0, 1, 1]:
+            return [1, 1, 0, 0];
+        when [1, 1, 0, 0]:
+            return [0, 1, 0, 1];
+        when [1, 1, 0, 1]:
+            return [1, 0, 0, 1];
+        when [1, 1, 1, 0]:
+            return [0, 0, 0, 0];
+        when [1, 1, 1, 1]:
+            return [0, 1, 1, 1];
+    end case;
+end function;
+
+//__________________________________________________
+
+//ex 2
+
+function Permutation(m)
+    //In the i-th position of the output vector we put the 
+    //element of the input vector that was in the block 
+    //number ((i - 1) mod 4) + 1 (so we multiply 
+    //((i - 1) mod 4) by 4 to get the correct shift) 
+    //and that was in position (i - 1) div 4 + 1 inside the 
+    //block (so we add this quantity to get the correct shift)
+    return [m[((i - 1) mod 4) * 4 + (i - 1) div 4 + 1] : i in [1..16]];
+end function;
+
+//__________________________________________________
+
+//ex 3
+
+function KSchedule(K)
+    //Create the permutations
+    V4:=VectorSpace(GF(2),4);
+    S16:=Sym({v: v in V4});
+    S1:=S16!(V4![1, 1, 0, 1], V4![0, 1, 0, 1], V4![1, 0, 1, 1],V4![1, 0, 0, 1], V4![0, 1, 1, 1], V4![0, 0, 1, 0], V4![0, 0, 0, 1])(V4![1, 0, 1, 0], V4![1, 1, 1, 1], V4![1, 1, 1, 0],V4![0, 1, 1, 0], V4![0, 0, 1, 1])(V4![0, 1, 0, 0], V4![1, 0, 0, 0]);
+    S2:=S16!(V4![1, 1, 0, 0], V4![1, 1, 1, 0], V4![0, 0, 0, 0],V4![1, 1, 0, 1], V4![1, 1, 1, 1], V4![1, 0, 0, 1], V4![0, 1, 0, 0], V4![0, 0, 0, 1], V4![0, 0, 1, 0], V4![0, 1, 1, 0],V4![1, 0, 1, 1], V4![0, 1, 1, 1], V4![0, 0, 1, 1], V4![0, 1, 0, 1])(V4![1, 0, 1, 0], V4![1, 0, 0, 0]);
+    //Initialize the vector with the first round key
+    Ks := [K];
+    for i in [1..4] do
+        //We concatenate in the correct order the subsequences
+        //of four elements of the previous round key to which
+        //we have applied S1 or S2 following the rule. The
+        //result is the next round key.
+        Append(~Ks,&cat[ElementToSequence(V4![Ks[i][j] : j in [5..8]]^S2), ElementToSequence(V4![Ks[i][j] : j in [1..4]]^S1), ElementToSequence(V4![Ks[i][j] : j in [13..16]]^S2), ElementToSequence(V4![Ks[i][j] : j in [9..12]]^S1)]);
+    end for;
+    return Ks;
+end function;
+
+//__________________________________________________
+
+//ex 4
+
+function ToyBlock(K,M)
+    Ks := KSchedule(K);
+    //Round 1(xor)
+    C := [M[j]+Ks[1][j] : j in [1..16]];
+    for i in [2,3,4] do
+        //Round 2,3,4(substitution, permutation, xor)
+        //The substitution is applied to each subsequence of
+        //four bits, then they are put together
+        C := &cat[Substitution([C[j] : j in [k .. k + 3]]) : k in [1..16 by 4]];
+        C := Permutation(C);
+        C := [C[j]+Ks[i][j] : j in [1..16]];
+    end for;
+    //Round 5(substitution, xor)
+    C := &cat[Substitution([C[j] : j in [k .. k + 3]]) : k in [1..16 by 4]];
+    return [C[j]+Ks[5][j] : j in [1..16]];
+end function;
+
+//__________________________________________________
+
+//ex 5
+
+function RevSubstitution(m)
+    //Inverted permutation in Substitution
+    case m:
+        when [0, 0, 0, 0]:
+            return [1, 1, 1, 0];
+        when [0, 0, 0, 1]:
+            return [0, 0, 1, 1];
+        when [0, 0, 1, 0]:
+            return [0, 1, 0, 0];
+        when [0, 0, 1, 1]:
+            return [1, 0, 0, 0];
+        when [0, 1, 0, 0]:
+            return [0, 0, 0, 1];
+        when [0, 1, 0, 1]:
+            return [1, 1, 0, 0];
+        when [0, 1, 1, 0]:
+            return [1, 0, 1, 0];
+        when [0, 1, 1, 1]:
+            return [1, 1, 1, 1];
+        when [1, 0, 0, 0]:
+            return [0, 1, 1, 1];
+        when [1, 0, 0, 1]:
+            return [1, 1, 0, 1];
+        when [1, 0, 1, 0]:
+            return [1, 0, 0, 1];
+        when [1, 0, 1, 1]:
+            return [0, 1, 1, 0];
+        when [1, 1, 0, 0]:
+            return [1, 0, 1, 1];
+        when [1, 1, 0, 1]:
+            return [0, 0, 1, 0];
+        when [1, 1, 1, 0]:
+            return [0, 0, 0, 0];
+        when [1, 1, 1, 1]:
+            return [0, 1, 0, 1];
+    end case;
+end function;
+
+function ToyBlockDecipher(K,C)
+    Ks := KSchedule(K);
+    //Round 5 inverted(xor, inverted substitution)
+    //Xor is the same function as before as it is its own
+    //inverse
+    M := [C[j]+Ks[5][j] : j in [1..16]];
+    M := &cat[RevSubstitution([M[j] : j in [k .. k + 3]]) : k in [1..16 by 4]];
+    for i in [4,3,2] do
+        //Round 4,3,2 inverted(xor, permutation, inverted
+        //substitution)
+        //Permutation is its own inverse, so we can use
+        //the same function as in the encryption
+        M := [M[j]+Ks[i][j] : j in [1..16]];
+        M := Permutation(M);
+        M := &cat[RevSubstitution([M[j] : j in [k .. k + 3]]) : k in [1..16 by 4]];
+    end for;
+    //Round 1 inverted(xor)
+    return [M[j]+Ks[1][j] : j in [1..16]];
+end function;
+
+//load "test.txt";

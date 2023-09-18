@@ -1,0 +1,375 @@
+//auxiliary functions from last assignment
+
+function Substitution(m)
+    case m:
+        when [0, 0, 0, 0]:
+            return [1, 1, 1, 0];
+        when [0, 0, 0, 1]:
+            return [0, 1, 0, 0];
+        when [0, 0, 1, 0]:
+            return [1, 1, 0, 1];
+        when [0, 0, 1, 1]:
+            return [0, 0, 0, 1];
+        when [0, 1, 0, 0]:
+            return [0, 0, 1, 0];
+        when [0, 1, 0, 1]:
+            return [1, 1, 1, 1];
+        when [0, 1, 1, 0]:
+            return [1, 0, 1, 1];
+        when [0, 1, 1, 1]:
+            return [1, 0, 0, 0];
+        when [1, 0, 0, 0]:
+            return [0, 0, 1, 1];
+        when [1, 0, 0, 1]:
+            return [1, 0, 1, 0];
+        when [1, 0, 1, 0]:
+            return [0, 1, 1, 0];
+        when [1, 0, 1, 1]:
+            return [1, 1, 0, 0];
+        when [1, 1, 0, 0]:
+            return [0, 1, 0, 1];
+        when [1, 1, 0, 1]:
+            return [1, 0, 0, 1];
+        when [1, 1, 1, 0]:
+            return [0, 0, 0, 0];
+        when [1, 1, 1, 1]:
+            return [0, 1, 1, 1];
+    end case;
+end function;
+
+function Permutation(m)
+    return [m[((i - 1) mod 4) * 4 + (i - 1) div 4 + 1] : i in [1..16]];
+end function;
+
+function KSchedule(K)
+    V4:=VectorSpace(GF(2),4);
+    S16:=Sym({v: v in V4});
+    S1:=S16!(V4![1, 1, 0, 1], V4![0, 1, 0, 1], V4![1, 0, 1, 1],V4![1, 0, 0, 1], V4![0, 1, 1, 1], V4![0, 0, 1, 0], V4![0, 0, 0, 1])(V4![1, 0, 1, 0], V4![1, 1, 1, 1], V4![1, 1, 1, 0],V4![0, 1, 1, 0], V4![0, 0, 1, 1])(V4![0, 1, 0, 0], V4![1, 0, 0, 0]);
+    S2:=S16!(V4![1, 1, 0, 0], V4![1, 1, 1, 0], V4![0, 0, 0, 0],V4![1, 1, 0, 1], V4![1, 1, 1, 1], V4![1, 0, 0, 1], V4![0, 1, 0, 0], V4![0, 0, 0, 1], V4![0, 0, 1, 0], V4![0, 1, 1, 0],V4![1, 0, 1, 1], V4![0, 1, 1, 1], V4![0, 0, 1, 1], V4![0, 1, 0, 1])(V4![1, 0, 1, 0], V4![1, 0, 0, 0]);
+    Ks := [K];
+    for i in [1..4] do
+        Append(~Ks,&cat[ElementToSequence(V4![Ks[i][j] : j in [5..8]]^S2), ElementToSequence(V4![Ks[i][j] : j in [1..4]]^S1), ElementToSequence(V4![Ks[i][j] : j in [13..16]]^S2), ElementToSequence(V4![Ks[i][j] : j in [9..12]]^S1)]);
+    end for;
+    return Ks;
+end function;
+
+function ToyBlock(Ks,M)
+    C := [M[j]+Ks[1][j] : j in [1..16]];
+    for i in [2,3,4] do
+        C := &cat[Substitution([C[j] : j in [k .. k + 3]]) : k in [1..16 by 4]];
+        C := Permutation(C);
+        C := [C[j]+Ks[i][j] : j in [1..16]];
+    end for;
+    C := &cat[Substitution([C[j] : j in [k .. k + 3]]) : k in [1..16 by 4]];
+    return [C[j]+Ks[5][j] : j in [1..16]];
+end function;
+
+function RevSubstitution(m)
+    case m:
+        when [0, 0, 0, 0]:
+            return [1, 1, 1, 0];
+        when [0, 0, 0, 1]:
+            return [0, 0, 1, 1];
+        when [0, 0, 1, 0]:
+            return [0, 1, 0, 0];
+        when [0, 0, 1, 1]:
+            return [1, 0, 0, 0];
+        when [0, 1, 0, 0]:
+            return [0, 0, 0, 1];
+        when [0, 1, 0, 1]:
+            return [1, 1, 0, 0];
+        when [0, 1, 1, 0]:
+            return [1, 0, 1, 0];
+        when [0, 1, 1, 1]:
+            return [1, 1, 1, 1];
+        when [1, 0, 0, 0]:
+            return [0, 1, 1, 1];
+        when [1, 0, 0, 1]:
+            return [1, 1, 0, 1];
+        when [1, 0, 1, 0]:
+            return [1, 0, 0, 1];
+        when [1, 0, 1, 1]:
+            return [0, 1, 1, 0];
+        when [1, 1, 0, 0]:
+            return [1, 0, 1, 1];
+        when [1, 1, 0, 1]:
+            return [0, 0, 1, 0];
+        when [1, 1, 1, 0]:
+            return [0, 0, 0, 0];
+        when [1, 1, 1, 1]:
+            return [0, 1, 0, 1];
+    end case;
+end function;
+
+//__________________________________________________
+
+//ex 1
+
+function LinApproxTable()
+    V4:=VectorSpace(GF(2),4);
+    Mat := ZeroMatrix(Integers(),16,16);
+    MSet := [ElementToSequence(v) : v in V4];
+    //The cycle is among all the possible linear combinations 
+    //of x_i seen as vectors in V4, and on all the possible 
+    //linear combinations of y_i seen as vectors in V4
+    for i in MSet do
+        for j in MSet do
+            //I compute the corresponding indices of the 
+            //matrix
+            indexi := Seqint([Integers()!i[k] : k in [4,3,2,1]],2)+1;
+            indexj := Seqint([Integers()!j[k] : k in [4,3,2,1]],2)+1;
+            for p in MSet do
+                //For each vector in V4 I compute the 
+                //substitution
+                c := Substitution (p);
+                //I check if the linear relation holds and 
+                //in that case I increase the value in the
+                //matrix
+                if (&+[i[k]*p[k]: k in [1..4]] eq &+[j[k]*c[k]: k in [1..4]]) then
+                    Mat[indexi,indexj] +:= 1;
+                end if;
+            end for;
+            //At the end I subtract 8 to get the actual element
+            Mat[indexi,indexj] -:= 8;
+        end for;
+    end for;
+    return Mat;
+end function;
+
+//LinApproxTable();
+
+//__________________________________________________
+
+//ex 2
+
+function LinAttack(Seq)
+    V8 := VectorSpace(GF(2),8);
+    SetV8 := [ElementToSequence(v): v in V8];
+    maxbias := 0;
+    //The cycle is among the possible subkeys in the second
+    //and fourth block, concatenated. Therefore, they can be
+    //seen as vectors of V8
+    for key in SetV8 do
+        //Initialization of the counter of the pairs that 
+        //satisfy the chosen relation
+        count := 0;
+        for pair in Seq do
+            //For each ciphertext, I compute the inverse
+            //xor with the key paying attention to indeces
+            //The operations are limited to the second and 
+            //fourth block, corresponding to the subkey
+            m := [pair[2][j]+key[j-4] : j in [5..8]] cat [pair[2][j]+key[j-8] : j in [13..16]];
+            //Then I compute the inverse substitution
+            m := &cat[RevSubstitution([m[j] : j in [k .. k + 3]]) : k in [1,5]];
+            //Check if the relation between the plaintext and 
+            //the ciphertext partially decrypted holds
+            if (m[2] + m[4] + m[6] + m[8] + pair[1][5] + pair[1][7] + pair[1][8] eq 0) then
+                count +:= 1;
+            end if;
+        end for;
+        //Compute the bias 
+        bias := Abs(count/#Seq - 1/2);
+        if (bias gt maxbias) then
+            //If the bias of the current subkey is greater than
+            //the previous maximum bias, we update the value 
+            //of the maximum bias and we save the value of the
+            //subkey that has that bias
+            maxbias := bias;
+            keymaxbias := key;
+        end if;
+    end for;
+    //Return the two parts of the subkey
+    return keymaxbias[1..4], keymaxbias[5..8];
+end function;
+
+procedure VerifyLinAttack()
+    V16 := VectorSpace(GF(2),16);
+    SetV16 := {ElementToSequence(v): v in V16};
+
+    //Generate a random sequence of round keys
+    Ks := [Random(SetV16) : i in [1..5]];
+
+    Seq := [];
+    for i in [1..10000] do
+        //Generate 10000 plaintexts, all different, and 
+        //their corresponding ciphertexts
+        pt := Random(SetV16);
+        Exclude(~SetV16,pt);
+        ct := ToyBlock(Ks,pt);
+        Append(~Seq, [pt,ct]);
+    end for;
+    
+    k5_2, k5_4 := LinAttack(Seq);
+    //The attack is probabilistic, so it can happen that
+    //the result is not correct
+    if k5_2 eq Ks[5][5..8] and k5_4 eq Ks[5][13..16] then
+        "This time the output of the function is correct!";
+    else
+        "This time the output of the function is wrong!";
+    end if;
+    printf "The last round key was \n%o \nand you found the partial subkeys \n[*,*,*,*], %o, [*,*,*,*], %o.", Ks[5], k5_2, k5_4;
+end procedure;
+
+//VerifyLinAttack();
+
+//__________________________________________________
+
+//ex 3
+
+//The idea is to increase the probability looking to the higher
+//values in the linear approximation table, and to use less
+//sboxes as possible in the trail, since a large number of
+//sboxes decrease the probability by piling-up lemma
+//So for example we want a trail that involves 4 sboxes and
+//uses the elements in the table that have absolute value 
+//greater than 4
+//This is not possible if we consider up to two sboxes 
+//at the fourth round (one of them has to be the first or
+//the third, otherwise we do not get information):
+//to satisfy the condition on the absolute value, in the third 
+//round we always have to start from an element with at least 
+//two bits, so at the second round we have to use at least two
+//sboxes. 
+//For similar reasons we can't use less that 3 boxes in the
+//first and third round as a whole
+//Since we have already computed two sections of the key
+//with the previous trail, we can use them to consider 
+//up to four sboxes at the fourth round without increasing
+//the complexity: again, we have to cycle only among
+//2^8 elements at most.
+//In particular, we use two trails: the first uses the sboxes
+//S42, S43, S44 to find the third part of the key (2^4
+//complexity) and the second uses all the sboxes to  
+//find the first part of the key (2^4 complexity)
+//Total complexity of these trails: 2^5
+
+//First trail
+//In the third round we start from an element with one
+//bit, so at the second round we can use only one sbox. 
+//The function takes as inputs also k5_2, k5_4 that we
+//had computed previously
+
+//Relations:
+//S11, S12 :    A = 1010 -> 0001 = 1
+//              x1 + x3 = y4			prob : 3/4  bias : 1/4
+//S24 : 		C = 1100 -> 0010 = 2
+//              x1 + x2 = y3       		prob : 3/4  bias : 1/4
+//S33 : 		1 = 0001 -> 0111 = 7
+//              x4 = y2 + y3 + y4  		prob : 7/8  bias : 3/8
+//Whole relation:
+//u47 + u411 + u415 + p1 + p3 + p5 + p7 + k = 0
+//Bias: 2^3 * 1/4 * 1/4 * 1/4 * 3/8 = 3/64
+
+function PersonalTrail(Seq, k5_2, k5_4)
+    V4 := VectorSpace(GF(2),4);
+    SetV4 := [ElementToSequence(v): v in V4];
+    maxbias := 0;
+    for k in SetV4 do
+            key := k5_2 cat k cat k5_4;
+            count := 0;
+            for pair in Seq do
+                m := [pair[2][j]+key[j-4] : j in [5..16]];
+                m := &cat[RevSubstitution([m[j] : j in [k .. k + 3]]) : k in [1,5,9]];
+                if (m[3] + m[7] + m[11] + pair[1][1] + pair[1][3] + pair[1][5] + pair[1][7] eq 0) then
+                    count +:= 1;
+                end if;
+            end for;
+            bias := Abs(count/#Seq - 1/2);
+            if (bias gt maxbias) then
+                maxbias := bias;
+                keymaxbias := k;
+            end if;
+    end for;
+    return keymaxbias;
+end function;
+
+//Second trail
+//In the third round we start from an element with one
+//bit, so at the second round we can use only one sbox. 
+//The function takes as inputs also k5_2, k5_3, k5_4 that we
+//had computed previously
+
+//Relations:
+//S11, S12 :    9 = 1001 -> 1000 = 8
+//              x1 + x4 = y1			prob : 1/4  bias : -1/4
+//S21 : 		C = 1100 -> 0010 = 2
+//              x1 + x2 = y3       		prob : 3/4  bias : 1/4
+//S33 : 		8 = 1000 -> 1111 = F
+//              x1 = y1 + y2 + y3 + y4	prob : 1/8  bias : -3/8
+//Whole relation:
+//u43 + u47 + u411 + u415 + p1 + p4 + p5 + p8 + k = 0
+//Bias: 2^3 * 1/4 * 1/4 * 1/4 * 3/8 = 3/64
+
+function PersonalTrail2(Seq, k5_2, k5_3, k5_4)
+    V4 := VectorSpace(GF(2),4);
+    SetV4 := [ElementToSequence(v): v in V4];
+    maxbias := 0;
+    for k in SetV4 do
+            key := k cat k5_2 cat k5_3 cat k5_4;
+            count := 0;
+            for pair in Seq do
+                m := [pair[2][j]+key[j] : j in [1..16]];
+                m := &cat[RevSubstitution([m[j] : j in [k .. k + 3]]) : k in [1,5,9,13]];
+                if (m[3] + m[7] + m[11] + m[15] + pair[1][1] + pair[1][4] + pair[1][5] + pair[1][8] eq 0) then
+                    count +:= 1;
+                end if;
+            end for;
+            bias := Abs(count/#Seq - 1/2);
+            if (bias gt maxbias) then
+                maxbias := bias;
+                keymaxbias := k;
+            end if;
+    end for;
+    return keymaxbias;
+end function;
+
+procedure VerifyWholeLinAttack()
+    V16 := VectorSpace(GF(2),16);
+    SetV16 := {ElementToSequence(v): v in V16};
+    
+    //Generate the sequence of round keys
+    //In the first two trivial cases the attack is effective
+    //With a random sequence, we are likely to find incorrect
+    //results: more than one subkey reach the same probability
+    Ks := KSchedule([GF(2)!0 : i in [1..16]]);
+	//Ks := KSchedule([GF(2)!1 : i in [1..16]]);
+    //Ks := [Random(SetV16) : i in [1..5]];
+
+    Seq := [];
+    for i in [1..10000] do
+        pt := Random(SetV16);
+        Exclude(~SetV16,pt);
+        ct := ToyBlock(Ks,pt);
+        Append(~Seq, [pt,ct]);
+    end for;
+    
+	//Compute the first two subkeys
+    k5_2, k5_4 := LinAttack(Seq);
+    if k5_2 eq Ks[5][5..8] and k5_4 eq Ks[5][13..16] then
+        "This time the output of the first function is correct!";
+		//Compute the third subkey using those computed
+		//above
+        k5_3 := PersonalTrail(Seq, k5_2, k5_4);
+        if k5_3 eq Ks[5][9..12] then
+            "This time the output of the second function is correct!";
+			//Compute the fourth subkey using those computed
+			//above
+            k5_1 := PersonalTrail2(Seq, k5_2, k5_3, k5_4);
+            if k5_1 eq Ks[5][1..4] then
+                "This time the output of the whole function is correct!";
+                printf "The last round key is \n%o \nand you found the partial subkeys \n%o, %o, %o, %o.", Ks[5], k5_1, k5_2, k5_3, k5_4;
+            else
+                "This time the output of the whole function is wrong!";
+                printf "The last round key was \n%o \nand you found the partial subkeys \n%o, %o, %o, %o.", Ks[5], k5_1, k5_2, k5_3, k5_4;
+            end if;
+        else
+            "This time the output of the second function is wrong!";
+            printf "The last round key was \n%o \nand you found the partial subkeys \n[*,*,*,*], %o, %o, %o.", Ks[5], k5_2, k5_3, k5_4;
+        end if;
+    else
+        "This time the output of the first function is wrong!";
+        printf "The last round key was \n%o \nand you found the partial subkeys \n[*,*,*,*], %o, [*,*,*,*], %o.", Ks[5], k5_2, k5_4;
+    end if;
+end procedure;
+
+//VerifyWholeLinAttack();

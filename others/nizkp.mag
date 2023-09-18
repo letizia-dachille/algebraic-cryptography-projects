@@ -1,0 +1,227 @@
+//___________________Global functions_______________________
+
+function prime_with_sub_of_order_p(p)
+	n := 2;
+	while true do
+		q := p*n+1;
+		if (IsPrime(q)) then
+			return q;
+		end if;
+		n := n + 1;
+	end while;
+end function;
+
+function Hash(m)
+	str := "";
+	for i in [1..#m] do
+		str := str cat IntegerToString(m[i], 16);
+	end for;
+	str := SHA1(str);
+	return StringToInteger(str, 16);
+end function;
+
+//___________________Global variables_______________________
+
+p := Random(PrimesInInterval(3, 100));
+q := prime_with_sub_of_order_p(p);
+el := PrimitiveElement(GF(q));
+
+//__________________________________________________
+
+//ex 1
+
+g1 := el^((q-1) div p);
+g2 := g1^2;
+rho := Random(p-1);
+h1 := g1^rho;
+h2 := g2^rho;
+
+function ZKP_Prover_log_equality(p)
+	t := Random(p-1);
+	I1 := g1^t;
+	I2 := g2^t;
+	c := Hash([Integers()|I1, I2, h1, h2, g1, g2]);
+	z := t + c * rho;
+	return <I1, I2, z>;
+end function;
+
+function ZKP_Verifier_log_equality(p, seq)
+	I1, I2, z := Explode(seq);
+	c := Hash([Integers()|I1, I2, h1, h2, g1, g2]);
+	return g1^z eq I1 * h1^c and g2^z eq I2 * h2^c;
+end function;
+
+//__________________________________________________
+
+//ex 2
+
+l1 := el^((q-1) div p);
+l2 := l1^2;
+x := Random(1, p-1);
+repeat
+	w := Random(1, p-1);
+until(x ne w);
+h1 := l1^x;
+h2 := l2^w;
+
+function ZKP_Prover_log_inequality(p)
+	t := Random(1, p-1);
+	C := (l2^x * h2^(-1))^t;
+	mu1 := t*x;
+	mu2 := t;
+	F := l2 ^ mu1;
+	B := h2 ^ (-mu2);
+	E := l1 ^ mu1;
+	D := h1 ^ (-mu2);
+	//Proof of log_l1(E) = log_l2(F) and log_1/h1(D) = log_1/h2(B)
+	t1 := Random(p-1);
+	I11 := l1^t1;
+	I21 := l2^t1;
+	t2 := Random(p-1);
+	I12 := h1^(-t2);
+	I22 := h2^(-t2);
+	c := Hash([Integers()|I11, I21, I12, I22, B, C, D, E, F, l1, l2, h1, h2]);
+	z1 := t1 + c * mu1;
+	seq1 := <I11, I21, z1>;
+	z2 := t2 + c * mu2;
+	seq2 := <I12, I22, z2>;
+	return <seq1, seq2, C, F, B, E, D>;
+end function;
+
+function ZKP_Verifier_log_inequality(p, seq)
+	seq1, seq2, C, F, B, E, D := Explode(seq);
+	response := true;
+	//Verify log_l1(E) = log_l2(F) and log_1/h1(D) = log_1/h2(B)
+	I11, I21, z1:= Explode(seq1);
+	I12, I22, z2:= Explode(seq2);
+	c := Hash([Integers()|I11, I21, I12, I22, B, C, D, E, F, l1, l2, h1, h2]);
+	response := response and l1^z1 eq I11 * E^c and l2^z1 eq I21 * F^c and h1^(-z2) eq I12 * D^c and h2^(-z2) eq I22 * B^c;
+	//Verify C = F * B and 1 = E * D
+	response := response and C eq F * B and 1 eq E * D;
+	//Verify C ne 1
+	return response and C ne 1;
+end function;
+
+//__________________________________________________
+
+//ex 3
+
+g := el^((q-1) div p);
+x := Random(p-1);
+h := g^x;
+g0 := g^2;
+r := Random(p-1);
+m := Random(p-1);
+C := [g^r, h^r * g0^m];
+
+function ZKP_Prover_plknowledge(p)
+	t1 := Random(p-1);
+	t2 := Random(p-1);
+	I := h^t1 * g0^t2;
+	I1 := g^t1;
+	c := Hash([Integers()|I, I1, Explode(C), g, h, g0]);
+	z1 := t1 + c*r;
+	z2 := t2 + c*m;
+	return <I, I1, z1, z2>;
+end function;
+
+function ZKP_Verifier_plknowledge(p, seq)
+	I, I1, z1, z2 := Explode(seq);
+	c := Hash([Integers()|I, I1, Explode(C), g, h, g0]);
+	return g^z1 eq I1 * C[1]^c and h^z1 * g0^z2 eq I * C[2]^c;
+end function;
+
+//__________________________________________________
+
+//ex 4
+
+h := el^((q-1) div p);
+g0 := h^2;
+mu := Random(p-1);
+rho1 := Random(p-1);
+repeat
+	rho2 := Random(p-1);
+until(rho1 ne rho2);
+C1 := h^rho1 * g0^mu;
+C2 := h^rho2 * g0^mu;
+
+function ZKP_Prover_repequality(p)
+	t := Random(p-1);
+	I := h^t;
+	c := Hash([Integers()|I, C1, C2, h, g0]);
+	z := t + c * (rho1 - rho2);
+	return <I, z>;
+end function;
+
+function ZKP_Verifier_repequality(p, seq)
+	I, z := Explode(seq);
+	c := Hash([Integers()|I, C1, C2, h, g0]);
+	return h^z eq I * C1^c * C2^(-c);
+end function;
+
+//__________________________________________________
+
+//ex 5
+
+g := el^((q-1) div p);
+x := Random(p-1);
+h := g^x;
+g0 := g^2;
+r := Random(p-1);
+m := Random(p-1);
+a, b := Explode([g^r, h^r * g0^m]);
+n := Random(m, m + 100);
+
+function ZKP_Prover_disjequality(p)
+	I := [];
+	t := 0;
+	cseq := [];
+	zseq := [];
+	for i in [0..n] do
+		if i eq m then
+			t := Random(p-1);
+			Append(~I, [g^t, h^t]);
+			Append(~cseq, 0);
+			Append(~zseq, 0);
+		else
+			Append(~cseq, Random(p-1));
+			Append(~zseq, Random(p-1));
+			Append(~I, [g^zseq[i+1] * a^(-cseq[i+1]), h^zseq[i+1] * b^(-cseq[i+1]) * g0^(i*cseq[i+1])]);
+		end if;
+	end for;
+	c := Hash([Integers()|a, b, Explode([I[i][j] : i in [1..#I], j in [1,2]])]);
+	cseq[m+1] := c - &+[cseq[i]: i in [1..#cseq]];
+	zseq[m+1] := t + r * cseq[m+1];
+	return <cseq, zseq, I>;
+end function;
+
+function ZKP_Verifier_disjequality(p, seq)
+	cseq, zseq, I := Explode(seq);
+	c := Hash([Integers()|a, b, Explode([I[i][j] : i in [1..#I], j in [1,2]])]);
+	response := true;
+	for i in [0..n] do 
+		response := response and g^zseq[i+1] eq I[i+1][1] * a^cseq[i+1] and h^zseq[i+1] eq I[i+1][2] * b^cseq[i+1] * g0^(-i*cseq[i+1]);
+	end for;
+	return response and c eq &+[cseq[i]: i in [1..#cseq]];
+end function;
+
+//__________________________________________________
+
+/*VERIFICATION
+
+seq := ZKP_Prover_log_equality(p);
+ZKP_Verifier_log_equality(p, seq);
+
+seq := ZKP_Prover_log_inequality(p);
+ZKP_Verifier_log_inequality(p, seq);
+
+seq := ZKP_Prover_plknowledge(p);
+ZKP_Verifier_plknowledge(p, seq);
+
+seq := ZKP_Prover_repequality(p);
+ZKP_Verifier_repequality(p, seq);
+
+seq := ZKP_Prover_disjequality(p);
+ZKP_Verifier_disjequality(p, seq);
+
+*/

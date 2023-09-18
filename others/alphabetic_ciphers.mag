@@ -1,0 +1,231 @@
+//ASCII
+//Lower case letters are between 97 and 122
+//Upper case letters are between 65 and 90
+
+//__________________________________________________
+
+//ex1
+
+function ShiftCrypt(x,K)
+    //Boolean vector that identifies uppercase letters using ASCII
+    upcase := [(StringToCode(x[i])lt 91 and StringToCode(x[i]) gt 64) : i in [1..#x]];
+    //Boolean vector that distinguishes letters from special symbols using ASCII
+    letters := [(upcase[i] or StringToCode(x[i]) lt 123 and StringToCode(x[i]) gt 96) : i in [1..#x]];
+    //Convertion of the message in ASCII and then modulo 26: using vector upcase[] we decide how much to shift the code
+    //Special symbols will be shifted as well
+    pt := [upcase[i] select StringToCode(x[i]) - 65 else StringToCode(x[i]) - 97 : i in [1..#x]];
+    //Encrypt: shift forward and take the remainder modulo 26
+    //We use vector letters[] to make sure special symbol do not change
+    ct := [letters[i] select (pt[i] + K) mod 26 else pt[i] : i in [1..#x]];
+    //Convertion of the message in string
+    return &cat[upcase[i] select CodeToString(ct[i] + 65) else CodeToString(ct[i] + 97) : i in [1..#x]];
+end function;
+
+function ShiftDecrypt(y,K)
+    //Boolean vector that identifies uppercase letters using ASCII
+    upcase := [(StringToCode(y[i]) lt 91 and StringToCode(y[i]) gt 64) : i in [1..#y]];
+    //Boolean vector that distinguishes letters from special symbols using ASCII
+    letters := [(upcase[i] or StringToCode(y[i]) lt 123 and StringToCode(y[i]) gt 96) : i in [1..#y]];
+    //Convertion of the message in ASCII and then modulo 26: using vector upcase[] we decide how much to shift the code 
+    //Special symbols will be shifted as well
+    ct := [upcase[i] select StringToCode(y[i]) - 65 else StringToCode(y[i]) - 97 : i in [1..#y]];
+    //Decrypt: shift backward and take the remainder modulo 26
+    //We use vector letters[] to make sure special symbol do not change
+    pt := [letters[i] select (ct[i] - K) mod 26 else ct[i] : i in [1..#y]];
+    //Convertion of the message in string
+    return &cat[upcase[i] select CodeToString(pt[i] + 65) else CodeToString(pt[i] + 97) : i in [1..#y]];
+end function;
+
+load "test1.mag";
+
+//__________________________________________________
+
+//ex2
+
+function SubCrypt(x,pi)
+    //Boolean vector that identifies uppercase letters using ASCII
+    upcase := [(StringToCode(x[i])lt 91 and StringToCode(x[i]) gt 64) : i in [1..#x]];
+    //Boolean vector that distinguishes letters from special symbols using ASCII
+    letters := [(upcase[i] or StringToCode(x[i]) lt 123 and StringToCode(x[i]) gt 96) : i in [1..#x]];
+    //Convertion of the message in ASCII and then between 1 and 26: using vector upcase[] we decide how much to shift the code
+    //Special symbols will be shifted as well
+    pt := [upcase[i] select StringToCode(x[i]) - 64 else StringToCode(x[i]) - 96 : i in [1..#x]];
+    //Encrypt: apply permutation
+    //We use vector letters[] to make sure special symbol do not change
+    ct := [letters[i] select pt[i]^pi else pt[i] : i in [1..#x]];
+    //Convertion of the message in string
+    return &cat[upcase[i] select CodeToString(ct[i] + 64) else CodeToString(ct[i] + 96) : i in [1..#x]];
+end function;
+
+function SubDecrypt(y,pi)
+    //Boolean vector that identifies uppercase letters using ASCII
+    upcase := [(StringToCode(y[i]) lt 91 and StringToCode(y[i]) gt 64) : i in [1..#y]];
+    //Boolean vector that distinguishes letters from special symbols using ASCII
+    letters := [(upcase[i] or StringToCode(y[i]) lt 123 and StringToCode(y[i]) gt 96) : i in [1..#y]];
+    //Convertion of the message in ASCII and then between 1 and 26: using vector upcase[] we decide how much to shift the code
+    //Special symbols will be shifted as well
+    ct := [upcase[i] select StringToCode(y[i]) - 64 else StringToCode(y[i]) - 96 : i in [1..#y]];
+    //Decrypt: apply inverse of the permutation
+    //We use vector letters[] to make sure special symbol do not change
+    pt := [letters[i] select ct[i]^(pi^(-1)) else ct[i] : i in [1..#y]];
+    //Convertion of the message in string
+    return &cat[upcase[i] select CodeToString(pt[i] + 64) else CodeToString(pt[i] + 96) : i in [1..#y]];
+end function;
+
+load "test2.mag";
+
+//__________________________________________________
+
+//ex3
+
+function VigCrypt(x,K)
+    //Convertion of the key in ASCII
+    K := ToLower(K);
+    K := [StringToCode(K[i])-97 : i in [1..#K]];
+    //Boolean vector that identifies uppercase letters using ASCII
+    upcase := [(StringToCode(x[i])lt 91 and StringToCode(x[i]) gt 64) : i in [1..#x]];
+    //Boolean vector that distinguishes letters from special symbols using ASCII
+    letters := [(upcase[i] or StringToCode(x[i]) lt 123 and StringToCode(x[i]) gt 96) : i in [1..#x]];
+    //Convertion of the message in ASCII and then modulo 26: using vector upcase[] we decide how much to shift the code
+    //Special symbols will be shifted as well
+    pt := [upcase[i] select StringToCode(x[i]) - 65 else StringToCode(x[i]) - 97 : i in [1..#x]];
+    //Encrypt: shift forward and take the remainder modulo 26. The element of the key is chosen looking at the number of 
+    //letters (no special symbols) that there are before, taken modulo 26.
+    //We use vector letters[] to make sure special symbol do not change
+    ct := [letters[i] select (pt[i] + K[(#[j:j in [1..i] | letters[j]]-1) mod #K + 1]) mod 26 else pt[i] : i in [1..#x]];
+    //Convertion of the message in string
+    return &cat[upcase[i] select CodeToString(ct[i] + 65) else CodeToString(ct[i] + 97) : i in [1..#x]];
+end function;
+
+function VigDecrypt(y,K)
+    //Convertion of the key in ASCII
+    K := ToLower(K);
+    K := [StringToCode(K[i])-97 : i in [1..#K]];
+    //Boolean vector that identifies uppercase letters using ASCII
+    upcase := [(StringToCode(y[i]) lt 91 and StringToCode(y[i]) gt 64) : i in [1..#y]];
+    //Boolean vector that distinguishes letters from special symbols using ASCII
+    letters := [(upcase[i] or StringToCode(y[i]) lt 123 and StringToCode(y[i]) gt 96) : i in [1..#y]];
+    //Convertion of the message in ASCII and then modulo 26: using vector upcase[] we decide how much to shift the code
+    //Special symbols will be shifted as well
+    ct := [upcase[i] select StringToCode(y[i]) - 65 else StringToCode(y[i]) - 97 : i in [1..#y]];
+    //Decrypt: shift backward and take the remainder modulo 26. The element of the key is chosen looking at the number of 
+    //letters (no special symbols) that there are before, taken modulo 26.
+    pt := [letters[i] select (ct[i] - K[(#[j:j in [1..i] | letters[j]]-1) mod #K + 1]) mod 26 else ct[i] : i in [1..#y]];
+    //Convertion of the message in string
+    return &cat[upcase[i] select CodeToString(pt[i] + 65) else CodeToString(pt[i] + 97) : i in [1..#y]];
+end function;
+
+load "test3.mag";
+
+//__________________________________________________
+
+//ex4
+
+function Frequencies(L)
+    R := RealField(5);
+    //Convertion of the message in ASCII (we exlude special symbols)
+    L := ToLower(L);
+    code := [StringToCode(L[i])-96 : i in [1..#L] | StringToCode(L[i]) lt 123 and StringToCode(L[i]) gt 96];
+    //Vector of the number of occurrencies: for each element in [1..26] we count the number of elements equal to that number
+    occ := [#[j : j in [1..#code] | code[j] eq i] : i in [1..26]];
+    //Vector of the frequencies, the operations have to be executed in the real field
+    F := [R!occ[i]/R!#code : i in [1..26]];
+    //We use the formula to compute the index
+    index := R!&+[occ[i]*(occ[i]-1) : i in [1..26]]/R!(#code*(#code-1));
+    return F, index;
+end function;
+
+load "test4.mag";
+
+//__________________________________________________
+
+//ex5
+
+function Kasiski(y,index)
+    R := RealField(5);
+    //flag: turns true when we find a suitable length for the key
+    //i: the beginning of the substring of length 3 we are considering
+    flag := 0;
+    i := 1;
+    //Convertion of the message in lower case and removal of special symbols
+    y := ToLower(y);
+    y := &cat[y[i] : i in [1..#y] | StringToCode(y[i]) lt 123 and StringToCode(y[i]) gt 96];
+    while flag eq 0 and i lt #y-5 do
+        str := Substring(y, i, 3);
+        //We count the occurrences of the substring of length 3, and we create the vector of indices where these strings occur
+        occ := [i];
+        for j in [(i+3)..#y-2] do
+            if (Substring(y, j, 3) eq str) then
+                Append(~occ, j);
+            end if;
+        end for;
+        //We proceed with the test only if the string occurs more than once
+        if #occ gt 1 then
+            //The suitable lengths of the key are the divisors of the gcd of all the distances among the occurrences
+            m := Divisors(Gcd([occ[i]-occ[i-1] : i in [2..#occ]]));
+            for mbar in m do
+                //We check the divisor only when all the substrings we obtain would be of length >= 2
+                if (#y div 2 gt mbar) then
+                    //We compute the indeces of coincidence (second return value of the function Frequencies) for each substring 
+                    //we obtain from y. The substring is obtained concatenating the letters with respect to their position in y
+                    //modulo the current divisor.
+                    indeces := [frequence : j in [0 .. mbar-1] | true where _,frequence := Frequencies(str) where str is &cat[y[k] : k in [1..#y] | (k-1) mod mbar eq j ]];
+                    //We check whether every computed index is closer to the given index or the random string index
+                    //In the first case we assume we found the correct keyword length
+                    if (&and[Abs(indeces[i] - index) lt Abs(indeces[i] - 0.038) : i in [1 .. mbar]]) then
+                        flag := 1;
+                        seq := mbar;
+                        break;
+                    end if; 
+                end if;
+            end for;
+        end if;
+        i +:= 1;
+    end while;
+    return seq;
+end function;
+
+//Function that recovers the key
+function KeyRecover(y, m, index)
+    R := RealField(5);
+    //Probabilities of occurrence of the letters in the English alphabet
+    probs := [0.082,0.015,0.028,0.043,0.127,0.022,0.020,0.061,0.070,0.002,0.008,0.040,0.024,0.067,0.075,0.019,0.001,0.060,0.063,0.091,0.028,0.010,0.023,0.001,0.020,0.001];
+    //Convertion of the message in lower case and removal of special symbols
+    y := ToLower(y);
+    y := &cat[y[i] : i in [1..#y] | StringToCode(y[i]) lt 123 and StringToCode(y[i]) gt 96];
+    //key: vector of the suitable letters of the key
+    key := [];
+    //We consider one substring at a time, to recover one letter of the key at a time
+    for j in [0 .. m-1] do
+        //We split the string as we did in in the previous function, we convert it in ASCII and then between 1 and 26
+        ysplit := [StringToCode(y[k])-96 : k in [1..#y] | (k-1) mod m eq j ];
+        //Vector of the number of occurrencies of the letters in the substring
+        occ := [#[i : i in [1..#ysplit] | ysplit[i] eq k] : k in [1..26]];
+        //flag: turns true when we find a suitable letter of the key
+        //g: the current letter we are considering as an attempt
+        flag := 0;
+        g := -1;
+        while (flag eq 0 and g lt 26) do
+            g +:= 1;
+            //mg: the quantity that approximates the index of coincidence 
+            mg := &+[probs[i]*R!occ[(i+g-1) mod 26 + 1]/R!#ysplit : i in [1..26]];
+            //If the quantity is sufficiently close to the index of coincidence of the text we assume we found the correct letter
+            if (Abs(mg - index) lt 0.005) then
+                flag := 1;
+                Append(~key, g);
+            end if;
+        end while;
+    end for;
+    //Convertion of the key in string
+    return &cat[CodeToString(key[i] + 97) : i in [1..#key]];
+end function;
+
+load "test5.mag";
+
+//Procedure that recovers the key and the plaintext
+procedure test5bar()
+    index:=RealField(5)!0.065;
+    m := Kasiski(C5,index);
+    key := KeyRecover(C5, m, index);
+    printf "Yes, I can! The key is \"%o\" and the deciphered text is:\n\n%o\n\nAlan Turing", key, VigDecrypt(C5, key);
+end procedure;

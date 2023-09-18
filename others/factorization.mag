@@ -1,0 +1,296 @@
+//ex 1
+
+function MillerRabinTest(n)
+	a := Random(1,n-1);
+	if GCD(a,n) ne 1 then
+		return true;
+	end if;
+	//Decomposition of n-1 such that n-1 = 2^k * q with q odd
+	q := n-1;
+	k := 0;
+	while q mod 2 eq 0 do
+		k := k + 1;
+		q := q div 2;
+	end while;
+	//Computation of b = a^q mod n
+	b := Modexp(a,q,n);
+	//Test if a^q is congruent to 1 mod n
+	if (b - 1) mod n eq 0 then
+		return true;
+	end if;
+	for i in [0..k-1] do
+		//Test if a^(2^i * q) is congruent to -1 mod n
+		if (b + 1) mod n eq 0 then
+			return true;
+		else
+			//Computation of 
+			//b = a^(2^(i + 1) * q) mod n = 
+			//  = (a^(2^i * q))^2 mod n = 
+			//  = b^2 mod n
+			b := Modexp(b,2,n);
+		end if;
+	end for;
+	return false;
+end function;
+
+//__________________________________________________
+
+//ex 2
+
+function Pollard(n)
+	//Fix a = 2, we assume n = pq with p,q odd primes
+	//so that (a,n) = 1
+	a := 2;
+	//Fix B bound, when the algorithm fails, B is incremented
+	B := 2;
+	//Counter for the number of iterations
+	c := 0;
+	//Max number of iterations = 10000
+	while c lt 10000 do
+		//Computation of a = a^(B!)
+		for j in [2..B] do
+			a := Modexp(a,j,n);
+		end for;
+		//If d = gcd(a^(B!) - 1, n) is a non-trivial factor
+		//return the prime d and n/d, otherwise change B
+		d := GCD(a-1,n);
+		if d gt 1 and d lt n then
+			B;
+			return [d,n div d];
+		else 
+			//B is incremented
+			B := B + 1;
+		end if;
+		c := c + 1;
+	end while;
+	//If max number of iterations is exceeded, the algorithm 
+	//fails
+	return "failure";
+end function;
+
+//Pollard(299);
+//Pollard(15770708441);
+
+//__________________________________________________
+
+//ex 3
+
+function Dixon(n,B)
+	//Initial checks (base cases for recursion)
+	//Check if n is prime
+	if (IsPrime(n)) then
+		return [<n,1>];
+	end if;
+	//Check if n is a square of a prime
+	if (IsSquare(n) and IsPrime(Isqrt(n))) then
+		return [<Isqrt(n),2>];
+	end if;
+	//Check if n is even and if n/2 is odd (otherwise 
+	//n = 10 is not factorized)
+	//The case n = 2^k * q with k>=2 is solved by Dixon
+	if (n mod 2 eq 0 and (n div 2) mod 2 ne 0) then
+		return [<2,1>] cat Dixon(n div 2, B);
+	end if;
+	//Construct the base factor base, adding -1
+	C := PrimesUpTo(B);
+	Insert(~C, 1, -1);
+	//Index to generate numbers of the form Isqrt(i*n)
+	i := 1;
+	//Flag to generate numbers of the form 
+	//j + Isqrt(i*n) where j varies from 0 to cap - 1
+	//If the algorithm does not work, try to 
+	//enlarge cap
+	cap := 5;
+	flag := 0;
+	//Counter for the number of integers taken into 
+	//consideration
+	count := 1;
+	//List of integers taken into consideration
+	z := [];
+	//List of lists containing the exponents of the
+	//factorization of each considered integer 
+	//(squared) with respect to the factor base
+	L := [];
+	//We consider at most 100 * cap different integers
+	while i le 100 do
+		//Generate the new integer 
+		Append(~z, Isqrt(i*n)+flag);
+		//Update i when all j's from 0 to cap - 1
+		//have been considered
+		i :=  i + flag div (cap - 1);
+		//The rotating j from 0 to cap - 1 is generated
+		//using mod
+		flag := (flag + 1) mod cap;
+		//Compute z^2
+		z2 := z[count]^2 mod n;
+		//Take the representative (positive or 
+		//negative) of z^2 with smalles absolute value
+		//(it will be <= n/2)
+		if (z2 gt n div 2) then
+			z2 := z2 - n;
+		end if;
+		//Exclude the element if z2 is 0 and pass to 
+		//the next iteration
+		if (z2 eq 0) then
+			Prune(~z);
+			continue;
+		end if;
+		//Prepare the list L with a new empty list
+		//that will contain the exponents of the
+		//factorization of z^2 with respect to the 
+		//factor base
+		Append(~L, [0: j in [1..#C]]);
+		//Factorize z^2 with respect to the 
+		//factor base (excluding -1)
+		for j in [2..#C] do
+			while z2 mod C[j] eq 0 do
+				L[count][j] := L[count][j] + 1;
+				z2 := z2 div C[j];
+			end while;
+		end for;
+		//If the remaining integer is -1, we insert it
+		//in the list, and change the sign to z^2
+		if (z2 eq -1) then
+			z2 := -z2;
+			L[count][1] := L[count][1] + 1;
+		end if;
+		//If z^2 is not 1, it could not be factorized
+		//completely with respect to the 
+		//factor base, so we exclude the element 
+		//from both lists and pass to the next 
+		//iteration
+		if (z2 ne 1) then
+			Prune(~L);
+			Prune(~z);
+			continue;
+		end if;
+		//Construct the matrix containing in each row
+		//the list of exponents (we are interested
+		//in their projection if GF(2) since we only
+		//want to check the parity)
+		A := Matrix(count, #C, [[GF(2)!j : j in list]: list in L]);
+		//Check if the kernel is non-0
+		if (count - Rank(A) gt 0) then
+			//We cycle through the elements of the 
+			//kernel (that correspond to the possible 
+			//dependence relations among the rows of 
+			//the matrix)
+			for b in (Set(Kernel(A)) diff {Zero(Kernel(A))}) do
+				//Compute the product of all the z's 
+				//corresponding to non zero
+				//coefficients of the relation
+				prod1 := &*[z[j] : j in [1..#z] | b[j] eq 1] mod n;
+				//Compute the product of all the
+				//primes of the factor base with
+				//exponents given by the sum of the
+				//exponents of the z^2's corresponding 
+				//to non zero coefficients of the 
+				//relation, divided by two (we have to
+				//take the square root)
+				prod2 := &*[C[k]^(&+[(L[j][k]) : j in [1..#z] | b[j] eq 1] div 2) : k in [1..#C]];
+				//Check if gcd computing will give us
+				//non-trivial factors
+				if ((prod1 + prod2) mod n ne 0 and (prod1 - prod2) mod n ne 0) then
+					//Compute the factors
+					f1 := GCD((prod1 + prod2) mod n, n);
+					f2 := n div f1;
+					//Factorize the factors via 
+					//recursion
+					seq1 := Dixon(f1, B);
+					seq2 := Dixon(f2, B);
+					//Merge the two lists
+					mergeseq := [];
+					for s1 in seq1 do
+						s := s1;
+						for s2 in seq2 do
+							//If the two lists contain 
+							//the same prime, we sum
+							//the exponents and we 
+							//remove the element
+							//from the second list
+							if s1[1] eq s2[1] then
+								s := <s1[1], s1[2]+s2[2]>;
+								Exclude(~seq2, s2);
+								break;
+							end if;
+						end for;
+						Append(~mergeseq, s);
+					end for;
+					//All remaining elements in the
+					//second list are added
+					for s2 in seq2 do
+						Append(~mergeseq, s2);
+					end for;
+					//The list is sorted
+					return Sort(mergeseq);
+				end if;
+			end for;
+		end if;	
+		count := count + 1;
+	end while;
+	//Return fake factorization when algorithm fails
+	return [<0,0>];
+end function;
+
+//Dixon(1800,5);
+//Dixon(1234567,5);
+
+//__________________________________________________
+
+//ex 4
+
+function Wiener(n,e)
+	//r1: current dividend
+	r1 := n;
+	//r2: current divisor
+	r2 := e;
+	//c1,d1: convergent c_{j-2}
+	c1 := 1;
+	d1 := 0;
+	//c2,d2: convergent c_{j-1}
+	c2 := 0;
+	d2 := 1;
+	//When r2 becomes 0, the algorithm terminates
+	//with failure (the euclidean algorithm has
+	//terminated)
+	while r2 ne 0 do
+		//Compute quotient and remainder
+		quot := r1 div r2;
+		r := r1 mod r2;
+		//Update r1, r2
+		r1 := r2;
+		r2 := r;
+		//Compute new convergents, and update 
+		//c1,d1,c2,d2
+		app1 := c2;
+		app2 := d2;
+		c2 := quot * c2 + c1;
+		d2 := quot * d2 + d1;
+		c1 := app1;
+		d1 := app2;
+		//Check if phi(n)=(ed-1)/t is integer
+		if (d2*e - 1) mod c2 eq 0 then
+			//Compute the coefficient of the equation
+			//(it is the sum of the factors)
+			sum := n - (d2*e - 1) div c2 + 1;
+			//Compute the delta of the equation
+			delta := sum^2 - 4*n;
+			//Check if delta>=0 and if it is integer
+			if (delta ge 0 and Sqrt(delta) eq Isqrt(delta)) then
+				//Compute the first factor
+				p := (sum + Isqrt(delta)) / 2;
+				//Check if p is integer and non-trivial
+				if (Floor(p) eq p and p gt 1 and p lt n) then
+					//Compute the other factor and
+					//return both factors and the
+					//last denominator, that is d
+					q := sum - p;
+					return [p,q,d2];
+				end if;
+			end if;
+		end if;
+	end while;
+	return "failure";
+end function;
+
+//Wiener(160523347,60728973);

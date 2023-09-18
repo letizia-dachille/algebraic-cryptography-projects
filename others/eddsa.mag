@@ -1,0 +1,541 @@
+//___________________Hash function__________________________
+
+	//-----------ENVIRONMENT----------
+
+	H:=["6A09E667F3BCC908","BB67AE8584CAA73B","3C6EF372FE94F82B","A54FF53A5F1D36F1","510E527FADE682D1","9B05688C2B3E6C1F","1F83D9ABFB41BD6B","5BE0CD19137E2179"];
+
+	K:=["428A2F98D728AE22", "7137449123EF65CD", "B5C0FBCFEC4D3B2F", "E9B5DBA58189DBBC", "3956C25BF348B538", "59F111F1B605D019", "923F82A4AF194F9B", "AB1C5ED5DA6D8118",
+	"D807AA98A3030242", "12835B0145706FBE", "243185BE4EE4B28C", "550C7DC3D5FFB4E2",
+	"72BE5D74F27B896F", "80DEB1FE3B1696B1", "9BDC06A725C71235", "C19BF174CF692694",
+	"E49B69C19EF14AD2", "EFBE4786384F25E3", "0FC19DC68B8CD5B5", "240CA1CC77AC9C65",
+	"2DE92C6F592B0275", "4A7484AA6EA6E483", "5CB0A9DCBD41FBD4", "76F988DA831153B5",
+	"983E5152EE66DFAB", "A831C66D2DB43210", "B00327C898FB213F", "BF597FC7BEEF0EE4",
+	"C6E00BF33DA88FC2", "D5A79147930AA725", "06CA6351E003826F", "142929670A0E6E70",
+	"27B70A8546D22FFC", "2E1B21385C26C926", "4D2C6DFC5AC42AED", "53380D139D95B3DF",
+	"650A73548BAF63DE", "766A0ABB3C77B2A8", "81C2C92E47EDAEE6", "92722C851482353B",
+	"A2BFE8A14CF10364", "A81A664BBC423001", "C24B8B70D0F89791", "C76C51A30654BE30",
+	"D192E819D6EF5218", "D69906245565A910", "F40E35855771202A", "106AA07032BBD1B8",
+	"19A4C116B8D2D0C8", "1E376C085141AB53", "2748774CDF8EEB99", "34B0BCB5E19B48A8",
+	"391C0CB3C5C95A63", "4ED8AA4AE3418ACB", "5B9CCA4F7763E373", "682E6FF3D6B2B8A3",
+	"748F82EE5DEFB2FC", "78A5636F43172F60", "84C87814A1F0AB72", "8CC702081A6439EC",
+	"90BEFFFA23631E28", "A4506CEBDE82BDE9", "BEF9A3F7B2C67915", "C67178F2E372532B",
+	"CA273ECEEA26619C", "D186B8C721C0C207", "EADA7DD6CDE0EB1E", "F57D4F7FEE6ED178",
+	"06F067AA72176FBA", "0A637DC5A2C898A6", "113F9804BEF90DAE", "1B710B35131C471B",
+	"28DB77F523047D84", "32CAAB7B40C72493", "3C9EBE0A15C9BEBC", "431D67C49C100D4C",
+	"4CC5D4BECB3E42B6", "597F299CFC657E2A", "5FCB6FAB3AD6FAEC", "6C44198C4A475817"];
+
+	//FUNZIONE COMPLETAMENTO A s BITS
+	//input r è numero intero e s è la lunghezza della sequenza a cui si 
+	//vuole arrivare
+	function Complete(r,s) 
+		r:=Reverse(Intseq(r,2)); // è una sequenza di bits
+		return ([ 0 : i in [1..s-#r]] cat r);
+	end function;
+
+	//--------SUB FUNCTIONS----------
+
+	// FUNZIONE AND
+	function AND (x,y)
+		return [(x[i]*y[i]) : i in [1..#x]];
+	end function;
+
+	//FUNZIONE XOR
+	function XOR (x,y)
+		return [(EuclideanNorm(x[i]-y[i])) : i in [1..#x]];
+	end function;
+
+	//FUNZIONE NOT
+	function NOT (x)
+		return [((x[i]+1)mod 2) : i in [1..#x]];
+	end function;
+
+	//FUNZIONE CH
+	function Ch (x,y,z)
+		return (XOR (AND (x,y), AND (NOT(x),z)));
+	end function;
+
+	//FUNZIONE MAJ
+	function Maj (x,y,z)
+		return (XOR(XOR (AND(x,y),AND(x,z)), AND(y,z)));
+	end function;
+
+	//FUNZIONE SIGMA_ZERO
+	function SigmaZero (x)
+		return (XOR(XOR(Rotate(x,28), Rotate(x,34)),Rotate(x,39)));
+	end function;
+
+	//FUNZIONE SIGMA_UNO
+	function SigmaUno (x)
+		return (XOR(XOR(Rotate(x,14), Rotate(x,18)),Rotate(x,41)));
+	end function;
+
+	//FUNZIONE SHIFT A DESTRA
+	function Shift (x,s)
+		return ([ 0 : i in [1..s]] cat [x[i] : i in [1..(#x-s)]]);
+	end function;
+
+	//FUNZIONE SIGMA_PICCOLO_ZERO
+	function SigmaPiccoloZero (x)
+		return XOR(XOR(Rotate(x,1), Rotate(x,8)),Shift (x,7));
+	end function;
+
+	//FUNZIONE SIGMA_PICCOLO_UNO
+	function SigmaPiccoloUno (x)
+		return XOR(XOR(Rotate(x,19), Rotate(x,61)),Shift (x,6));
+	end function;
+
+	//FUNZIONE HEX_CHAR_TO_BIN
+	function HexCharToBin (c)
+		case c:
+				when "":
+					return [];
+				when " ":
+					return [];
+				when "0":
+					return [0,0,0,0];
+				when "1":
+					return [0,0,0,1];
+				when "2":
+					return [0,0,1,0];
+				when "3":
+					return [0,0,1,1];
+				when "4":
+					return [0,1,0,0];
+				when "5":
+					return [0,1,0,1];
+				when "6":
+					return [0,1,1,0];
+				when "7":
+					return [0,1,1,1];
+				when "8":
+					return [1,0,0,0];
+				when "9":
+					return [1,0,0,1];
+				when "A":
+					return [1,0,1,0];
+				when "a":
+					return [1,0,1,0];
+				when "B":
+					return [1,0,1,1];	
+				when "b":
+					return [1,0,1,1];
+				when "C":
+					return [1,1,0,0];
+				when "c":
+					return [1,1,0,0];
+				when "D":
+					return [1,1,0,1];
+				when "d":
+					return [1,1,0,1];
+				when "E":
+					return [1,1,1,0];
+				when "e":
+					return [1,1,1,0];
+				when "F":
+					return [1,1,1,1];
+				when "f":
+					return [1,1,1,1];
+		end case;
+		error "char not exadecimal",c;
+	end function;
+
+	//FUNZIONE HEX_TO_BIN
+	function HexToBin(h) 
+		return (&cat[HexCharToBin(h[i]) : i in [1..#h]]);
+	end function;
+
+
+	//FUNZIONE DA BINARIO A ESADECIMALE
+	// b è una LISTA binaria; i bit indicano potenze di 2 CRESCENTI 
+	//(magma style).
+	function BinToHex(b) 
+		//la conversione in base 16, visto che 16=2^4, si fa a blocchi di 4
+		r := #b mod 4; 
+		d := #b div 4;
+		hex := ""; // la scrittura in base 16 sara' una stringa con caratteri relativi a potenze di 16 DECRESCENTI
+		for i in [0..d-1] do
+			case [b[4*i+k]: k in [1..4]]:
+				when [0,0,0,0]:
+					hex := hex cat "0";
+				when [0,0,0,1]:
+					hex := hex cat "1";
+				when [0,0,1,0]:
+					hex := hex cat "2";
+				when [0,0,1,1]:
+					hex := hex cat "3";
+				when [0,1,0,0]:
+					hex := hex cat "4";
+				when [0,1,0,1]:
+					hex := hex cat "5";
+				when [0,1,1,0]:
+					hex := hex cat "6";
+				when [0,1,1,1]:
+					hex := hex cat "7";
+				when [1,0,0,0]:
+					hex := hex cat "8";
+				when [1,0,0,1]:
+					hex := hex cat "9";
+				when [1,0,1,0]:
+					hex := hex cat "A";
+				when [1,0,1,1]:
+					hex := hex cat "B";
+				when [1,1,0,0]:
+					hex := hex cat "C";
+				when [1,1,0,1]:
+					hex := hex cat "D";
+				when [1,1,1,0]:
+					hex := hex cat "E";			
+				when [1,1,1,1]:
+					hex := hex cat "F";
+			end case;
+		end for;
+		return hex;
+	end function;
+
+	//FUNZIONE SUM
+	//input: due sequenze di bits
+	function Sum2 (u,v) 
+		return Complete(((Seqint(Reverse(u),2) + Seqint(Reverse(v),2)) mod 2^64),64);
+	end function;	
+
+	//FUNZIONE PADDING
+	//L'input è una stringa esadecimale
+	function padding (M)
+		M:= HexToBin(M);
+		l:=#M;
+		//Solution(a,b,n) ritorna a*k = b mod n e n
+		k,_:=Solution(1, 896-(l+1), 1024); 
+		return (M cat [ 1] cat [ 0 : i in [1..k]] cat Complete(l,128));
+	end function;
+
+	k:=[HexToBin(K[i]) : i in [1..#K]];
+
+	//--------------MAIN FUNCTION----------------------------
+
+	//Input: Hexdecimal string message of arbitrary length
+	//Output: 256 bits in hexdecimal
+	function SHA512(M)
+		W:= [[0 : i in [1..64]]:j in [1..80]];
+		M:= [Partition(block,64) : block in Partition(padding(M),1024)];
+		N:=#M; //N is the number of blocks
+		//H[i]:Setting initial value
+		//h is a list of lists (in binary)
+		h:= [HexToBin(H[i]) : i in [1..#H]]; 
+
+		//The following operations have to be performed on every block from 1 to N
+		for i in [1..N] do
+
+			//-------------MESSAGES TABLE--------------------
+			
+			for t in [1..16] do 
+				W[t]:= M[i][t]; 
+			end for;
+
+			for t in [17..80] do
+				sigma1_piccolo := Seqint(Reverse(SigmaPiccoloUno(W[t-2])),2);
+				sigma0_piccolo := Seqint(Reverse(SigmaPiccoloZero(W[t-15])),2);
+				w7 := Seqint(Reverse(W[t-7]),2);
+				w16 := Seqint(Reverse(W[t-16]),2);
+
+				W[t]:= Complete((sigma1_piccolo + w7 + sigma0_piccolo + w16) mod 2^64, 64);
+				// W[t]:= Sum2(Sum2(Sum2 (SigmaPiccoloUno(W[t-2]), W[t-7]),SigmaPiccoloZero(W[t-15])),W[t-16]);
+			end for;
+
+			//-----------VARIABLES INITIALIZATION------------
+			a:=h[1];
+			b:=h[2];
+			c:=h[3];
+			d:=h[4];
+			e:=h[5];
+			f:=h[6];
+			g:=h[7];
+			q:=h[8];
+
+			//---------OPERATIONS BETWEEN VARIABLES----------
+
+
+			for t in [1..80] do
+				W_t := Seqint(Reverse(W[t]),2);
+				k_t := Seqint(Reverse(k[t]),2);
+				c_h := Seqint(Reverse(Ch(e,f,g)),2);
+				sigma1 := Seqint(Reverse(SigmaUno(e)),2);
+				q_i := Seqint(Reverse(q),2);
+				maj := Seqint(Reverse(Maj(a,b,c)),2);
+				sigma0 := Seqint(Reverse(SigmaZero(a)),2);
+				d_i := Seqint(Reverse(d), 2);
+
+				T1:= (q_i + sigma1 + c_h + k_t + W_t) mod 2^64;
+				T2:= (sigma0 + maj) mod 2^64;
+				q:=g;
+				g:=f;
+				f:=e;
+				e:= Complete((d_i + T1) mod 2^64, 64);
+				d:=c;
+				c:=b;
+				b:=a;
+				a:=Complete((T1 + T2) mod 2^64, 64);
+			end for;
+
+			//--------CALCULATION OF i-TH HASH VALUE---------
+			h[1]:= Sum2(a,h[1]);
+			h[2]:= Sum2(b,h[2]);
+			h[3]:= Sum2(c,h[3]);
+			h[4]:= Sum2(d,h[4]);
+			h[5]:= Sum2(e,h[5]);
+			h[6]:= Sum2(f,h[6]);
+			h[7]:= Sum2(g,h[7]);
+			h[8]:= Sum2(q,h[8]);	
+
+		end for;
+
+		//------------------MESSAGE DIGEST-------------------
+		return BinToHex(h[1] cat h[2] cat h[3] cat h[4] cat h[5] cat h[6] cat h[7] cat h[8]);
+	end function;
+
+//___________________Global parameters______________________
+
+	p := 2^255 - 19;
+	d := -121665 * Modinv(121666, p) mod p;
+	ord := 2^252 + 27742317777372353535851937790883648493;
+	b := 256;
+
+//___________________Global functions_______________________
+
+//Function to compute the x of a point P on the curve
+//starting from the y component and the sign
+function Compute_x(y, sign)    
+	//Compute x^2
+	x2 := (y*y-1) * Modinv(d*y*y+1, p);  
+	//When x^2 = 0 we have x = 0 hence we should have
+	//sign = 0, and we can return x = 0
+	if x2 eq 0 then       
+		if not sign then 
+			return 0;
+		end if; 
+	end if;  
+	//Compute the possible candidate for x
+	x := Modexp(x2, (p+3) div 8, p);   
+	//In case (x*x - x2) mod p ne 0 it must hold
+	//x^2 = -x2 mod p, then we consider x = x*2^{(p-1)/4} as
+	//a new candidate
+	if (x*x - x2) mod p ne 0 then    
+		x := x * Modexp(2, (p-1) div 4, p) mod p;
+	end if;
+	//If the sign we have does not coincide with the sign of 
+	//the candidate we can simply change the sign of the
+	//candidate
+	if (x mod 2 eq 0 select 0 else 1) ne sign then      
+		x := p - x;
+	end if;
+	return x;
+end function;
+
+//Point B
+By := 4 * Modinv(5,p) mod p;
+Bx := Compute_x(By, 0);
+//We represent a point (x,y) on the curve as a 4-tuple
+//(X, Y, Z, T) with x = X/Z, y = Y/Z, x*y = T/Z
+B := [Bx, By, 1, (Bx * By) mod p];
+
+//Function to check whether two points on the curve are the
+//same
+function Are_Equal(P, Q)    
+	//Check whether first components are equal
+	if (P[1] * Q[3] - Q[1] * P[3]) mod p ne 0 then
+	    return false; 
+	end if;  
+	//Check whether second components are equal
+	if (P[2] * Q[3] - Q[2] * P[3]) mod p ne 0 then       	
+		return false;
+	end if;
+	return true;
+end function;
+
+//Function to compute P+Q where P and Q are two points on
+//the curve
+//We follow the formulas described in the pdf "rfc8032.pdf"
+function Add_Points(P, Q)    
+	P1 := ((P[2]-P[1]) * (Q[2]-Q[1])) mod p;
+	P2 := ((P[2]+P[1]) * (Q[2]+Q[1])) mod p;   
+	P3 := (2 * P[4] * Q[4] * d) mod p;
+	P4 := (2 * P[3] * Q[3]) mod p;    
+	P5 := P2 - P1;
+	P6 := P4 - P3;
+	P7 := P4 + P3;
+	P8 := P2 + P1;    
+	return [P5 * P6, P7 * P8, P6 * P7, P5 * P8];
+end function;
+
+//Function to compute j*P where P is a point on the curve
+//using square and multiply
+function Square_and_Multiply(j, P)
+	//Compute binary representation of j
+	jseq := Reverse(Intseq(j, 2));
+	//Identity element of the curve
+	Q := [0, 1, 1, 0];
+	//Since Magma uses little endian format, the values are 
+	//already in the correct order for square and multiply
+	for i in [1..#jseq] do  
+		//Compute 2Q
+		Q := Add_Points(Q, Q);
+		if (jseq[i] eq 1) then     
+			//Compute Q + P  
+			Q := Add_Points(Q, P); 
+		end if;
+	end for;        
+	return Q;
+end function;
+
+//Function to compute the encoding of a point P on the curve
+function Enc(P)
+	//Compute P as (x,y)
+	x := (P[1] * Modinv(P[3], p)) mod p;
+	y := (P[2] * Modinv(P[3], p)) mod p;
+	//Compute Enc(x,y) = (Enc(y), sign(x)) where Enc(y) is
+	//the little endian representation of y
+	app := Intseq(y,2,b-1) cat [x mod 2 eq 0 select 0 else 1];
+	//Convert in hexadecimal representation
+	return &cat[BinToHex(Reverse(app[8*i-7..8*i])) : i in [1..b div 8]];
+end function;
+
+//Function to compute the decoding of a point P on the curve
+function Dec(s) 
+	//Convert in binary representation (little endian on
+	//bytes)
+	y := &cat[Reverse(HexToBin(s[2*i-1..2*i])) : i in [1..32]];
+	//The last bit is the sign of x
+	sign := y[b];
+	//Convert the first b-1 bits to get the integer 
+	//representation of y
+	y := Seqint(y[1..b-1],2);
+	//Compute x
+	x := Compute_x(y, sign);
+	//Compute the other components of the point
+	return [x, y, 1, x*y mod p];
+end function;
+
+//__________________________________________________
+
+//ex 1
+
+function Ed25519_Sign(sk, m)
+	//Compute the hash of the key
+	H := SHA512(sk);
+	//Convert the first half of the hash in hexadecimal 
+	//representation (little endian on bytes)
+	Htemp := &cat[Reverse(HexToBin(H[2*i-1..2*i])) : i in [1..32]];
+	//Compute a by shifting the bits
+	a := Seqint([0,0,0] cat Htemp[4..b-2] cat [1], 2);
+	//Compute A = a*B
+	A := Square_and_Multiply(a, B);
+	//Compute the hash of the second half of the hash 
+	//concatenated to the message
+	r := SHA512(H[65..128] cat m);
+	//Convert in binary representation (little endian 
+	//on bytes)
+	r;
+	r := Seqint(&cat[Reverse(HexToBin(r[2*i-1..2*i])) : i in [1..64]],2) mod ord;
+	//Compute R = r*B
+	R := Square_and_Multiply(r, B);
+	//Compute the hash of Enc(R) cat Enc(A) cat m
+	S := SHA512(Enc(R) cat Enc(A) cat m);
+	//Convert it in binary representation (little endian 
+	//on bytes), then compute r + H*a and convert in integer
+	//representation
+	S := Intseq((r + Seqint(&cat[Reverse(HexToBin(S[2*i-1..2*i])) : i in [1..64]],2) * a) mod ord, 2, b);
+	//Convert in hexadecimal representation (little endian 
+	//on bytes)
+	S := &cat[BinToHex(Reverse(S[8*i-7..8*i])) : i in [1..b div 8]];
+	return Enc(R) cat S;
+end function;
+
+//__________________________________________________
+
+//ex 2
+
+function Ed25519_Verify(pk, m, sigma)
+	//Compute A as a point on the curve
+	A := Dec(pk);
+	//Split sigma = (Enc(R), Enc(S))
+	EncR := sigma[1..b div 4];
+	EncS := sigma [b div 4 + 1..b div 2];
+	//Compute R as a point on the curve
+	R := Dec(EncR);
+	//Compute S by converting it in binary representation 
+	//(little endian on bytes), then in integer 
+	//representation
+	S := Seqint(&cat[Reverse(HexToBin(EncS[2*i-1..2*i])) : i in [1..32]], 2);
+	//If there are no errors, 0 <= S <= ord-1
+	if S ge ord then
+		return false;
+	end if;
+	//Compute the hash of Enc(R) cat ok cat m
+	h := SHA512(EncR cat pk cat m);
+	//Convert it in binary representation (little endian 
+	//on bytes), then convert in integer representation
+	h := Seqint(&cat[Reverse(HexToBin(h[2*i-1..2*i])) : i in [1..64]], 2) mod ord;
+	//Compute 8*S*B
+	SB := Square_and_Multiply(8*S, B);
+	//Compute 8*h*A
+	hA := Square_and_Multiply(8*h, A);
+	//Compute 8*R
+	R8 := Square_and_Multiply(8, R);
+	//Check if 8*S*B = 8*R + 8*h*A to verify the signature
+	return Are_Equal(SB, Add_Points(R8, hA)); 
+end function;
+
+//__________________________________________________
+
+/*VERIFICATION
+
+//Test vectors (assignment)
+
+sk := "833fe62409237b9d62ec77587520911e9a759cec1d19755b7da901b96dca3d42";
+pk := "ec172b93ad5e563bf4932c70e1245034c35467ef2efd4d64ebf819683467e2bf";
+m := "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f";
+sign := Ed25519_Sign(sk, m);
+Ed25519_Verify(pk, m, sign);
+
+sk := "c5aa8df43f9f837bedb7442f31dcb7b166d38535076f094b85ce3a2e0b4458f7";
+pk := "fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025";
+m := "af82";
+sign := Ed25519_Sign(sk, m);
+Ed25519_Verify(pk, m, sign);
+
+//Test vectors (rfc88032.pdf)
+
+sk := "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60";
+pk := "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a";
+m := "";
+sign := "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b";
+Ed25519_Sign(sk, m) eq BinToHex(HexToBin(sign));
+Ed25519_Verify(pk, m, sign);
+
+sk := "4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb";   
+pk := "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c";
+m := "72";
+sign := "92a009a9f0d4cab8720e820b5f642540a2b27b5416503f8fb3762223ebdb69da085ac1e43e15996e458f3613d0f11d8c387b2eaeb4302aeeb00d291612bb0c00";
+Ed25519_Sign(sk, m) eq BinToHex(HexToBin(sign));
+Ed25519_Verify(pk, m, sign);
+
+sk := "c5aa8df43f9f837bedb7442f31dcb7b166d38535076f094b85ce3a2e0b4458f7";
+pk := "fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025";
+m := "af82";
+sign := "6291d657deec24024827e69c3abe01a30ce548a284743a445e3680d7db5ac3ac18ff9b538d16f290ae67f760984dc6594a7c15e9716ed28dc027beceea1ec40a";
+Ed25519_Sign(sk, m) eq BinToHex(HexToBin(sign));
+Ed25519_Verify(pk, m, sign);
+
+sk := "f5e5767cf153319517630f226876b86c8160cc583bc013744c6bf255f5cc0ee5";
+pk := "278117fc144c72340f67d0f2316e8386ceffbf2b2428c9c51fef7c597f1d426e";
+m := "08b8b2b733424243760fe426a4b54908632110a66c2f6591eabd3345e3e4eb98fa6e264bf09efe12ee50f8f54e9f77b1e355f6c50544e23fb1433ddf73be84d879de7c0046dc4996d9e773f4bc9efe5738829adb26c81b37c93a1b270b20329d658675fc6ea534e0810a4432826bf58c941efb65d57a338bbd2e26640f89ffbc1a858efcb8550ee3a5e1998bd177e93a7363c344fe6b199ee5d02e82d522c4feba15452f80288a821a579116ec6dad2b3b310da903401aa62100ab5d1a36553e06203b33890cc9b832f79ef80560ccb9a39ce767967ed628c6ad573cb116dbefefd75499da96bd68a8a97b928a8bbc103b6621fcde2beca1231d206be6cd9ec7aff6f6c94fcd7204ed3455c68c83f4a41da4af2b74ef5c53f1d8ac70bdcb7ed185ce81bd84359d44254d95629e9855a94a7c1958d1f8ada5d0532ed8a5aa3fb2d17ba70eb6248e594e1a2297acbbb39d502f1a8c6eb6f1ce22b3de1a1f40cc24554119a831a9aad6079cad88425de6bde1a9187ebb6092cf67bf2b13fd65f27088d78b7e883c8759d2c4f5c65adb7553878ad575f9fad878e80a0c9ba63bcbcc   2732e69485bbc9c90bfbd62481d9089beccf80cfe2df16a2cf65bd92dd597b0707e0917af48bbb75fed413d238f5555a7a569d80c3414a8d0859dc65a46128bab27af87a71314f318c782b23ebfe808b82b0ce26401d2e22f04d83d1255dc51addd3b75a2b1ae0784504df543af8969be3ea7082ff7fc9888c144da2af58429ec96031dbcad3dad9af0dcbaaaf268cb8fcffead94f3c7ca495e056a9b47acdb751fb73e666c6c655ade8297297d07ad1ba5e43f1bca32301651339e22904cc8c42f58c30c04aafdb038dda0847dd988dcda6f3bfd15c4b4c4525004aa06eeff8ca61783aacec57fb3d1f92b0fe2fd1a85f6724517b65e614ad6808d6f6ee34dff7310fdc82aebfd904b01e1dc54b2927094b2db68d6f903b68401adebf5a7e08d78ff4ef5d63653a65040cf9bfd4aca7984a74d37145986780fc0b16ac451649de6188a7dbdf191f64b5fc5e2ab47b57f7f7276cd419c17a3ca8e1b939ae49e488acba6b965610b5480109c8b17b80e1b7b750dfc7598d5d5011fd2dcc5600a32ef5b52a1ecc820e308aa342721aac0943bf6686b64b2579376504ccc493d97e6aed3fb0f9cd71a43dd497f01f17c0e2cb3797aa2a2f256656168e6c496afc5fb93246f6b1116398a346f1a641f3b041e989f7914f90cc2c7fff357876e506b50d334ba77c225bc307ba537152f3f1610e4eafe595f6d9d90d11faa933a15ef1369546868a7f3a45a96768d40fd9d03412c091c6315cf4fde7cb68606937380db2eaaa707b4c4185c32eddcdd306705e4dc1ffc872eeee475a64dfac86aba41c0618983f8741c5ef68d3a101e8a3b8cac60c905c15fc910840b94c00a0b9d0";
+sign := "0aab4c900501b3e24d7cdf4663326a3a87df5e4843b2cbdb67cbf6e460fec350aa5371b1508f9f4528ecea23c436d94b5e8fcd4f681e30a6ac00a9704a188a03";
+Ed25519_Sign(sk, m) eq BinToHex(HexToBin(sign));
+Ed25519_Verify(pk, m, sign);
+
+sk := "833fe62409237b9d62ec77587520911e9a759cec1d19755b7da901b96dca3d42";
+pk := "ec172b93ad5e563bf4932c70e1245034c35467ef2efd4d64ebf819683467e2bf";
+m := "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f";
+sign := "dc2a4459e7369633a52b1bf277839a00201009a3efbf3ecb69bea2186c26b58909351fc9ac90b3ecfdfbc7c66431e0303dca179c138ac17ad9bef1177331a704";
+Ed25519_Sign(sk, m) eq BinToHex(HexToBin(sign));
+Ed25519_Verify(pk, m, sign);
+*/
